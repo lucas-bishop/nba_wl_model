@@ -7,8 +7,8 @@ library(broom)
 current_date <- now()
 
 
-# Load and format baseball games that have already been played
-all_game_data <- read_csv(file="nba_elo.csv",
+# Load and format basketball games that have already been played
+all_game_data <- read_csv(file="https://projects.fivethirtyeight.com/nba-model/nba_elo.csv",
                       col_types=cols(date = col_date(),
                                      date=col_date(),
                                      team1=col_character(),
