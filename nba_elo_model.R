@@ -63,18 +63,18 @@ binomial_df <- all_predicted_observed %>%
 
 
 
-binomial_fit_validation %>%
+binomial_df %>%
   ggplot(aes(x=fav_538_prob, y=observed)) +
-  geom_ribbon(aes(ymin=conf.low, ymax=conf.high), fill="lightgray") +
+  geom_ribbon(aes(ymin=conf.low, ymax=conf.high), fill="lightblue") +
   geom_abline(aes(intercept=0, slope=1), color="darkgray") +
   geom_point() +
   theme_classic() + 
   coord_cartesian(ylim=c(0,1)) +
   labs(x="Predicted Probability of Winning",
        y="Observed Probability of Winning",
-       title="The 538 model underpredicts the true ability of the favorite to win",
-       subtitle="All games from 1871 to present")
-
+       title="The 538 model underpredicts the true ability of the favorite\n to win",
+       subtitle="All games from 1995 season to present")
+## this means that if a team is predicted to win 70% of the time (x axis), they acually win ~74% of the time.
 
 
 
