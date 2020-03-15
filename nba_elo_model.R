@@ -42,6 +42,43 @@ favorite_win_prob %>%
 
 
 #plot the observed versus expected fraction of games won
+all_predicted_observed <- favorite_win_prob %>% 
+  mutate(fav_538_prob = round(fav_538_prob, digits=2)) %>%
+  group_by(fav_538_prob) %>%
+  summarize(games = n(),
+            wins = sum(fav_538_won),
+            observed = wins / games)
+
+binomial_fit_validation <- all_predicted_observed %>%
+  mutate(prob = fav_538_prob) %>%
+  group_by(fav_538_prob) %>%
+  nest() %>%
+  mutate(binomial = map(data, function(df)
+    tidy(binom.test(x=as.integer(df$games * df$prob), 
+                    n=df$games),
+         p=df$prob
+    )
+  )
+  ) %>%
+  unnest() %>%
+  select(fav_538_prob, games, wins, observed, conf.low, conf.high)
+
+
+
+binomial_fit_validation %>%
+  ggplot(aes(x=fav_538_prob, y=observed)) +
+  geom_ribbon(aes(ymin=conf.low, ymax=conf.high), fill="lightgray") +
+  geom_abline(aes(intercept=0, slope=1), color="darkgray") +
+  geom_point() +
+  theme_classic() + 
+  coord_cartesian(ylim=c(0,1)) +
+  labs(x="Predicted Probability of Winning",
+       y="Observed Probability of Winning",
+       title="The 538 model underpredicts the true ability of the favorite to win",
+       subtitle="All games from 1871 to present")
+
+
+
 
 
 
