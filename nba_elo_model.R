@@ -47,18 +47,18 @@ all_predicted_observed <- favorite_win_prob %>%
             wins = sum(fav_538_won, na.rm = TRUE),
             observed = wins / games)
 
-binomial_fit_validation <- all_predicted_observed %>%
-  mutate(prob = fav_538_prob) %>%
+binomial_df <- all_predicted_observed %>%
+  mutate(prob = fav_538_prob) %>% 
   group_by(fav_538_prob) %>%
   nest() %>%
+  ## now have a data frame of data frames basically, want to know probability of success ad confidence intervals for each row(df) in our larger df
   mutate(binomial = map(data, function(df)
-    tidy(binom.test(x=as.integer(df$games * df$prob), 
-                    n=df$games),
-         p=df$prob
-    )
-  )
-  ) %>%
-  unnest() %>%
+                              tidy(binom.test(x=as.integer(df$games * df$prob), 
+                              n=df$games), 
+                              p=df$prob)
+                        )) %>% 
+  unnest(cols = c(data, binomial)) %>% 
+  ##now have a 1 x 4 tibble from all_predicted_observed and a binomial fit 1 x 8 df joined together grouped by each 538_prob
   select(fav_538_prob, games, wins, observed, conf.low, conf.high)
 
 
