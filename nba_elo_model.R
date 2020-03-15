@@ -7,7 +7,7 @@ library(broom)
 current_date <- now()
 
 
-# Load and format basketball games that have already been played
+# Load and format basketball games that have already been played. I will focus only on post 1995 stats
 all_game_data <- read_csv(file="https://projects.fivethirtyeight.com/nba-model/nba_elo.csv",
                       col_types=cols(date = col_date(),
                                      date=col_date(),
@@ -16,11 +16,9 @@ all_game_data <- read_csv(file="https://projects.fivethirtyeight.com/nba-model/n
                                      season=col_integer(),
                                      score1=col_integer(),
                                      score2=col_integer())
-                      ) %>% filter(date < current_date)
-# make df for this only this season
-current_season <- all_game_data %>% filter(season == "2020")
+                      ) %>% filter(date < current_date, season >= 1995)
 
-# add new columns that show the favorite and if they won based on ELO model
+# add new columns that show the favorite and if they won based on ELO model. I will do since 1995 since I have been baskterball fan since then
 favorite_win_prob <- all_game_data %>%
   mutate(fav_538_won=ifelse(elo_prob1>elo_prob2, score1 > score2, score2 > score1),
          fav_538_prob=ifelse(elo_prob1>elo_prob2, elo_prob1, elo_prob2)) %>%
@@ -46,7 +44,7 @@ all_predicted_observed <- favorite_win_prob %>%
   mutate(fav_538_prob = round(fav_538_prob, digits=2)) %>%
   group_by(fav_538_prob) %>%
   summarize(games = n(),
-            wins = sum(fav_538_won),
+            wins = sum(fav_538_won, na.rm = TRUE),
             observed = wins / games)
 
 binomial_fit_validation <- all_predicted_observed %>%
