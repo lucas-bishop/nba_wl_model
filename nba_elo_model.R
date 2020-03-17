@@ -1,5 +1,7 @@
 ##Validating 538's ELO NBA prediction model
 
+# Day 1
+#load libraries
 library(tidyverse)
 library(lubridate)
 library(broom)
