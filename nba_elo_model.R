@@ -24,7 +24,38 @@ all_game_data <- read_csv(file="https://projects.fivethirtyeight.com/nba-model/n
 favorite_win_prob <- all_game_data %>%
   mutate(fav_538_won=ifelse(elo_prob1>elo_prob2, score1 > score2, score2 > score1),
          fav_538_prob=ifelse(elo_prob1>elo_prob2, elo_prob1, elo_prob2)) %>%
-  select(season, date, team1, team2, fav_538_won, fav_538_prob)
+  select(season, date, team1, team2, score1, score2, fav_538_won, fav_538_prob)
+
+
+wl_live <- favorite_win_prob %>% 
+  mutate(win1=score1 > score2,
+         win2=score2 > score1,
+         team_win1=paste(team1, win1, sep = "_"),
+         team_win2=paste(team2, win2, sep = "_")) %>% 
+  gather(one_two, team_win, team_win1, team_win2) %>% 
+  separate(team_win, into = c("team", "win"), sep = "_", convert = TRUE) %>% 
+  arrange(date) %>% 
+  group_by(season, team) %>% 
+  #select your favorite team and/or season. I do this before the mutate function below
+  #because of playoffs, different teams have different column lengths
+  filter(team == 'POR', season == 2019) %>% 
+  #add a lag to reflect the win pct at beginning of day, before games. and add '0' placeholder at first poisiton
+  mutate(wins = c(0, na.omit(lag(cumsum(win)))), 
+         losses = c(0, na.omit(lag(cumsum(!win)))), 
+         win_pct = c(0, na.omit(wins / (wins+losses)))
+         ) %>% 
+  select(date, team1, team2, wins, losses, win_pct)
+  
+
+
+
+
+
+
+
+
+
+
 
 overall_win_prob <- mean(favorite_win_prob$fav_538_won, na.rm = TRUE)
 
