@@ -6,8 +6,10 @@ library(tidyverse)
 library(lubridate)
 library(broom)
 
-current_date <- now()
-
+#at time of writing this code, the NBA season has been postponed due to coronavirus.
+#Since the games are still being logged on our data source while they are postponed, we need to make a variable for the last normal day of NBA schedule
+#if you use current date, postponed games will screw up downstream analysis
+last_games_day <- as.Date(c('2020-03-10'))
 
 # Load and format basketball games that have already been played. I will focus only on post 1995 stats
 all_game_data <- read_csv(file="https://projects.fivethirtyeight.com/nba-model/nba_elo.csv",
@@ -18,7 +20,7 @@ all_game_data <- read_csv(file="https://projects.fivethirtyeight.com/nba-model/n
                                      season=col_integer(),
                                      score1=col_integer(),
                                      score2=col_integer())
-                      ) %>% filter(date < current_date, season >= 1995) %>% 
+                      ) %>% filter(date < last_games_day, season >= 1995) %>% 
   select(-'carm-elo1_pre', -'carm-elo1_post', -'carm-elo2_pre', -'carm-elo2_post', -'carm-elo_prob1',
          -'carm-elo_prob2', -'raptor1_pre', -'raptor2_pre', -'raptor_prob1', -'raptor_prob2')
 
@@ -38,15 +40,12 @@ wl_live <- favorite_win_prob %>%
   separate(team_win, into = c("team", "win"), sep = "_", convert = TRUE) %>% 
   arrange(date) %>% 
   group_by(season, team) %>% 
-  #select your favorite team and/or season. I do this before the mutate function below
-  #because of playoffs, different teams have different column lengths
-  filter(team == 'POR', season == 2019) %>% 
   #add a lag to reflect the win pct at beginning of day, before games. and add '0' placeholder at first poisiton
   mutate(wins = c(0, na.omit(lag(cumsum(win)))), 
          losses = c(0, na.omit(lag(cumsum(!win)))), 
          win_pct = c(0, na.omit(wins / (wins+losses)))
-         ) %>% 
-  select(date, team1, team2, wins, losses, win_pct)
+         ) %>% ungroup() %>% 
+  select(season, team, date, win_pct)#select your favorite team and use tail() function to check output wl_pct is accurate
   
 
 
