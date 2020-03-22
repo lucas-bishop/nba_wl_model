@@ -6,6 +6,17 @@ library(tidyverse)
 library(lubridate)
 library(broom)
 
+#define function that calculates win pct based on two teams' win percentages, with rules for first couple days of the season.
+get_wp <- function(A, B){
+  
+  if((A == 0 && B == 0) || (A == 1 && B == 1)){
+    0.5
+  } else {
+    A * (1-B) / (A*(1-B) + B*(1-A))
+  }
+  
+}
+
 #at time of writing this code, the NBA season has been postponed due to coronavirus.
 #Since the games are still being logged on our data source while they are postponed, we need to make a variable for the last normal day of NBA schedule
 #if you use current date, postponed games will screw up downstream analysis
@@ -47,70 +58,101 @@ wl_live <- favorite_win_prob %>%
          ) %>% ungroup() %>% 
   select(season, team, date, win_pct)#select your favorite team and use tail() function to check output wl_pct is accurate
   
+#now want to see how win pct changes year to year, grouped by team
+wl_season <- favorite_win_prob %>%
+  mutate(win1=score1>score2,
+         win2=score2>score1,
+         team_win1 = paste(team1, win1, sep="_"),
+         team_win2 = paste(team2, win2, sep="_")) %>%
+  gather(one_two, team_win, team_win1, team_win2) %>%
+  separate(team_win, into=c("team", "win"), sep="_", convert=TRUE) %>%
+  group_by(team, season) %>%
+  summarize(current_avg = mean(win)) %>%
+  #notice we are saying all teams started at .500 prior to 1995 season, which isn't true but needs placeholder
+  mutate(prev_avg = c(0.5, na.omit(lag(current_avg)))) %>%
+  ungroup()
+
+#now join the two other dfs we created with live win_pct change
+favorite_win_prob <- favorite_win_prob %>%
+  inner_join(., wl_live, by=c("team1"="team", "season", "date")) %>%
+  inner_join(., wl_live, by=c("team2"="team", "season", "date")) %>%
+  #now want to use those win percenatages at point in the season to calculate probabliities
+  mutate(win_prob1=map2_dbl(win_pct.x, win_pct.y, get_wp),
+         win_prob2=1-win_prob1,
+         fav_wplive_won=ifelse(win_prob1 > win_prob2, score1 > score2, score2 > score1),
+         fav_wplive_prob=ifelse(win_prob1 > win_prob2, win_prob1, win_prob2)) %>%
+  select(season, date, team1, team2, score1, score2, 
+         fav_538_won, fav_538_prob, fav_wplive_won, fav_wplive_prob)
+
+# now want to join in the wl_season df
+favorite_win_prob <- favorite_win_prob %>%
+  inner_join(., wl_season, by=c("team1"="team", "season")) %>%
+  inner_join(., wl_season, by=c("team2"="team", "season")) %>%
+  mutate(win_prob1=map2_dbl(current_avg.x, current_avg.y, get_wp),
+         win_prob2=1-win_prob1,
+         fav_wpcurrent_won=ifelse(win_prob1 > win_prob2, score1 > score2, score2 > score1),
+         fav_wpcurrent_prob=ifelse(win_prob1 > win_prob2, win_prob1, win_prob2),
+         
+         win_prob1=map2_dbl(prev_avg.x, prev_avg.y, get_wp),
+         win_prob2=1-win_prob1,
+         fav_wpprev_won=ifelse(win_prob1 > win_prob2, score1 > score2, score2 > score1),
+         fav_wpprev_prob=ifelse(win_prob1 > win_prob2, win_prob1, win_prob2)
+  ) %>%
+  select(season, date, team1, team2, score1, score2, fav_538_won, fav_538_prob, 
+         fav_wplive_won, fav_wplive_prob, fav_wpcurrent_won, fav_wpcurrent_prob, fav_wpprev_won, fav_wpprev_prob)
 
 
+tidy_win_prob <- favorite_win_prob %>% 
+  ##mutate one column for each model now that we have what we need
+  mutate(FiveThirtyEight=paste(fav_538_won, fav_538_prob, sep="_"),
+         wplive=paste(fav_wplive_won, fav_wplive_prob, sep="_"),
+         wpcurrent=paste(fav_wpcurrent_won, fav_wpcurrent_prob, sep="_"),
+         wpprev=paste(fav_wpprev_won, fav_wpprev_prob, sep="_")) %>%
+  select(-starts_with("fav")) %>%
+  gather(model, won_prob, FiveThirtyEight, wplive, wpcurrent, wpprev) %>%
+  separate(won_prob, into=c("won", "prob"), sep="_", convert=TRUE)
+# Now we have a line for each game across each season for each model with the favorite and the model's probability that they won
 
 
+overall_win_prob <- tidy_win_prob %>% group_by(model) %>% 
+  summarize(mean=mean(won))
 
-
-
-
-
-
-
-overall_win_prob <- mean(favorite_win_prob$fav_538_won, na.rm = TRUE)
-
-# in history of games played, plot the fraction of games that the favorite won
-favorite_win_prob %>% 
-  group_by(season) %>%
-  summarize(fraction_favorite_won = mean(fav_538_won)) %>%
-  ggplot(aes(x=season, y=fraction_favorite_won)) +
-  geom_hline(aes(yintercept=overall_win_prob), color="lightgray") +
+#plot how each model does over time
+tidy_win_prob %>%
+  group_by(season, model) %>%
+  summarize(fraction_favorite_won = mean(won)) %>%
+  ungroup() %>%
+  ggplot(aes(x=season, y=fraction_favorite_won, group=model, color=model)) +
+  geom_hline(data=overall_win_prob, aes(yintercept=mean, group=model, color=model)) +
   geom_line() + 
   theme_classic() +
   coord_cartesian(ylim=c(0,1)) +
-  labs(x="Season", y="Proportion of games that favorite won",
-       title="The 538 model does a better than average job\n of predicting the winner of NBA games")
+  labs(x="Season", y="Fraction of games favorite won",
+       title="The Winning Percentage model can out perform the 538\nELO model if it uses end of season winning averages") +
+  scale_color_brewer(name=NULL,
+                     breaks=c("FiveThirtyEight", "wpcurrent", "wplive", "wpprev"),
+                     labels=c("538", "WP Curent", "WP Live", "WP Previous"),
+                     palette = "Dark2")
+# we see using the previous season winning percentage does the worst job of predicting
 
-
-#plot the observed versus expected fraction of games won
-all_predicted_observed <- favorite_win_prob %>% 
-  mutate(fav_538_prob = round(fav_538_prob, digits=2)) %>%
-  group_by(fav_538_prob) %>%
+# now plot the observed versus expected: how does each model perform at different predicted win probabilities
+tidy_win_prob %>% 
+  mutate(prob = round(prob, digits=2)) %>%
+  group_by(prob, model) %>%
   summarize(games = n(),
-            wins = sum(fav_538_won, na.rm = TRUE),
-            observed = wins / games)
-
-binomial_df <- all_predicted_observed %>%
-  mutate(prob = fav_538_prob) %>% 
-  group_by(fav_538_prob) %>%
-  nest() %>%
-  ## now have a data frame of data frames basically, want to know probability of success ad confidence intervals for each row(df) in our larger df
-  mutate(binomial = map(data, function(df)
-                              tidy(binom.test(x=as.integer(df$games * df$prob), 
-                              n=df$games), 
-                              p=df$prob)
-                        )) %>% 
-  unnest(cols = c(data, binomial)) %>% 
-  ##now have a 1 x 4 tibble from all_predicted_observed and a binomial fit 1 x 8 df joined together grouped by each 538_prob
-  select(fav_538_prob, games, wins, observed, conf.low, conf.high)
-
-
-
-binomial_df %>%
-  ggplot(aes(x=fav_538_prob, y=observed)) +
-  geom_ribbon(aes(ymin=conf.low, ymax=conf.high), fill="lightblue") +
-  geom_abline(aes(intercept=0, slope=1), color="darkgray") +
-  geom_point() +
+            wins = sum(won),
+            observed = wins / games) %>%
+  ggplot(aes(x=prob,  y=observed, group=model, color=model)) +
+  geom_abline(aes(intercept=0, slope=1), color="gray") +
+  geom_line() +
   theme_classic() + 
-  coord_cartesian(ylim=c(0,1)) +
-  labs(x="Predicted Probability of Winning",
-       y="Observed Probability of Winning",
-       title="The 538 model underpredicts the true ability of the favorite\n to win",
-       subtitle="All games from 1995 season to present")
-## this means that if a team is predicted to win 70% of the time (x axis), they acually win ~74% of the time.
-
-
+  scale_color_brewer(name=NULL,
+                     breaks=c("FiveThirtyEight", "wpcurrent", "wplive", "wpprev"),
+                     labels=c("538", "WP Curent", "WP Live", "WP Previous"),
+                     palette = "Dark2") +
+  labs(x="Predicted Win Probability", y="Observed Win Probability",
+       title="The 538 and WP Current models generate more reliable win probabilities than the\nWP Live or Previous models",
+       subtitle="All data since 1995 season")
 
 
 
