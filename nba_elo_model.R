@@ -18,7 +18,9 @@ all_game_data <- read_csv(file="https://projects.fivethirtyeight.com/nba-model/n
                                      season=col_integer(),
                                      score1=col_integer(),
                                      score2=col_integer())
-                      ) %>% filter(date < current_date, season >= 1995)
+                      ) %>% filter(date < current_date, season >= 1995) %>% 
+  select(-'carm-elo1_pre', -'carm-elo1_post', -'carm-elo2_pre', -'carm-elo2_post', -'carm-elo_prob1',
+         -'carm-elo_prob2', -'raptor1_pre', -'raptor2_pre', -'raptor_prob1', -'raptor_prob2')
 
 # add new columns that show the favorite and if they won based on ELO model. I will do since 1995 since I have been baskterball fan since then
 favorite_win_prob <- all_game_data %>%
