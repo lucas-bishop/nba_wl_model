@@ -22,7 +22,7 @@ get_wp <- function(A, B){
 #if you use current date, postponed games will screw up downstream analysis
 last_games_day <- as.Date(c('2020-03-10'))
 
-# Load and format basketball games that have already been played. I will focus only on post 1995 stats
+# Load and format basketball games that have already been played. I will focus only on post 1995 stats, since I've been alive
 all_game_data <- read_csv(file="https://projects.fivethirtyeight.com/nba-model/nba_elo.csv",
                       col_types=cols(date = col_date(),
                                      date=col_date(),
