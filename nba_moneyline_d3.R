@@ -13,4 +13,9 @@ team_names <- sportsbook_html %>% html_nodes("div._3A-gC._2DWLf") %>% .[[1]] %>%
   html_nodes("span._3O1Gx") %>% html_text()
 
 scores <- sportsbook_html %>% html_nodes("div._3A-gC._2DWLf") %>% .[[1]] %>% 
-  html_nodes("div._1Y3rN._2trL6") %>% html_text()
+  html_nodes("div._1Y3rN._2trL6 div:nth-child(n)") %>%
+  html_text()
+
+date <- sportsbook_html
+
+moneylines <- sportsbook_html
