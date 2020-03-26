@@ -153,6 +153,6 @@ classic_html_pages <- favorite_win_prob %>%
   paste0("https://classic.sportsbookreview.com/betting-odds/nba-basketball/money-line/?date=", .)
 
 
-moneylines <- map_dfr(classic_html_pages, pull_moneyline_data)
+moneylines <- read_csv("data/moneylines.csv")
 
 
