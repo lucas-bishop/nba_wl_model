@@ -110,6 +110,8 @@ favorite_win_prob <- favorite_win_prob %>%
 
 
 parse_table_row <- function(row){
+  dates <- row %>% html_nodes("div.status-complete") %>% html_attr("rel")
+  
   team_names <- row %>% 
     html_nodes("span.team-name") %>% html_text()
   
@@ -120,15 +122,27 @@ parse_table_row <- function(row){
   moneylines <- row %>%
     html_node("div.eventLine-book") %>% html_nodes("div.eventLine-book-value") %>% 
     html_text()
-  
-  tibble(team1=str_replace(team_names[2], "\\s-.*\\n.*", ""), 
-         team2=str_replace(team_names[1], "\\s-.*\\n.*", ""),
+  # in MLB tutorial this chunk of the function will look a little different because of the way baseball and nba data is read in
+  tibble(dates=as.Date(dates),
+         team1=team_names[1], 
+         team2=team_names[2],
          score2=as.numeric(scores[2]),
         score1=as.numeric(scores[1]),
         moneyline1=as.numeric(str_replace(moneylines[2], "\\+", "")),
         moneyline2=as.numeric(str_replace(moneylines[1], "\\+", ""))
   )
 }
+
+
+pull_moneyline_data <- function(url){
+  print(url)
+  
+  read_html(url) %>%
+    html_nodes("div.holder-complete") %>%
+    map_dfr(., parse_table_row)
+  
+}
+
 
 classic_html_pages <- favorite_win_prob %>%
   # the moneyline information start at the 2006 season on this website so start from there
@@ -139,14 +153,6 @@ classic_html_pages <- favorite_win_prob %>%
   paste0("https://classic.sportsbookreview.com/betting-odds/nba-basketball/money-line/?date=", .)
 
 
-pull_moneyline_data <- function(url){
-  
-  
-}
-classic_html %>% html_nodes("div.holder-complete") %>% map_dfr(., parse_table_row)
-
-
-
-  
+moneylines <- map_dfr(classic_html_pages, pull_moneyline_data)
 
 
