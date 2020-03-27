@@ -19,10 +19,10 @@ parse_table_row <- function(row){
   tibble(dates=as.Date(dates),
          team1=team_names[1], 
          team2=team_names[2],
-         score2=as.numeric(scores[2]),
          score1=as.numeric(scores[1]),
-         moneyline1=as.numeric(str_replace(moneylines[2], "\\+", "")),
-         moneyline2=as.numeric(str_replace(moneylines[1], "\\+", ""))
+         score2=as.numeric(scores[2]),
+         moneyline1=as.numeric(str_replace(moneylines[1], "\\+", "")),
+         moneyline2=as.numeric(str_replace(moneylines[2], "\\+", ""))
   )
 }
 
