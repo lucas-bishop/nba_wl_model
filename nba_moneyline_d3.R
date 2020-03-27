@@ -117,16 +117,55 @@ get_moneyline_prob <- function(x){
   }
 }
 
+fwp <- c("LAL", "MIA", "CLE", "GSW", "MIN", "UTA", "CHO", "DET", "MEM", 
+         "BOS", "PHI", "ORL", "PHO", "LAC", "DAL", "DEN", "CHI", "TOR",
+         "ATL", "SAS", "IND", "HOU", "NYK", "POR", "MIL", "WAS", "NOK", "SAC",
+         "NOP", "OKC", "BRK")
+ml <- c("L.A. Lakers", "Miami", "Cleveland", "Golden State", "Minnesota", "Utah", "Charlotte",
+        "Detroit", "Memphis", "Boston", "Philadelphia", "Orlando", "Phoenix", "L.A. Clippers", "Dallas",
+        "Denver", "Chicago", "Toronto", "Atlanta", "San Antonio", "Indiana", "Houston", "New York", 
+        "Portland", "Milwaukee", "Washington", "New Orleans", "Sacramento", "New Orleans", "Oklahoma City", "Brooklyn")
+
+
+name_convert <- tibble(fwp=fwp, ml=ml)
+favorite_win_prob <- favorite_win_prob %>% filter(season >= 2007)
 
 ## Read in csv file created from the get_moneylines.R script
-moneylines <- read_csv("data/moneylines.csv") %>% drop_na() %>% select(-X1) %>% 
+favorite_win_prob <- read_csv("data/moneylines.csv", 
+         col_types = cols(score1 = col_integer(), score2 = col_integer())) %>% 
+  drop_na() %>% select(-X1) %>%
+  mutate(date = as.Date(date, "%m/%d/%Y","%Y-%m-%d")) %>% 
   mutate(moneyline_prob1=map_dbl(moneyline1, get_moneyline_prob)) %>% 
   mutate(moneyline_prob2=map_dbl(moneyline2, get_moneyline_prob)) %>% 
   mutate(fav_ml_live_won=ifelse(moneyline_prob1 > moneyline_prob2, score1 > score2, score2 > score1),
-        fav_ml_live_prob=ifelse(moneyline_prob1 > moneyline_prob2, moneyline_prob1, moneyline_prob2))
-# I noticed there are some NA values in our dataset - when looking back at those pages there are just missing rows for some reason.
-# I think this is due to the fact that NBA teams have changed - the Seattle SuperSonics no longer exist and I noticed the moneyline for their opening night game is gone.
-# after doing this we still have a dataset with moneylines and outcomes for 15179 games - very robust
+        fav_ml_live_prob=ifelse(moneyline_prob1 > moneyline_prob2, moneyline_prob1, moneyline_prob2)) %>% 
+  inner_join(., name_convert, by=c("team1"="ml")) %>%
+  inner_join(., name_convert, by=c("team2"="ml")) %>%
+  select(-team1, -team2) %>%
+  rename(team1=fwp.x, team2=fwp.y) %>% 
+  inner_join(favorite_win_prob, .,
+             by=c("date", "team1" = "team2", "team2"="team1",
+                  "score1"="score2", "score2"="score1")) %>% 
+  select(-moneyline1, -moneyline2, -moneyline_prob1, -moneyline_prob2)
+
+# after doing this we have a dataset with moneylines and outcomes for 13744 games - very robust
+# this isn't all games since 2007 season because of team name changes and defunct teams having their moneylines wiped
+
+tidy_win_prob <- favorite_win_prob %>% 
+  ##mutate one column for each model now that we have what we need
+  mutate(FiveThirtyEight=paste(fav_538_won, fav_538_prob, sep="_"),
+         wplive=paste(fav_wplive_won, fav_wplive_prob, sep="_"),
+         wpcurrent=paste(fav_wpcurrent_won, fav_wpcurrent_prob, sep="_"),
+         wpprev=paste(fav_wpprev_won, fav_wpprev_prob, sep="_"),
+         #adding in probability model we just calc'd based on moneylines
+         money_winprob=paste(fav_ml_live_won, fav_ml_live_prob, sep="_")) %>%
+  select(-starts_with("fav")) %>%
+  gather(model, won_prob, FiveThirtyEight, wplive, wpcurrent, wpprev, money_winprob) %>%
+  separate(won_prob, into=c("won", "prob"), sep="_", convert=TRUE)
+# Now we have a line for each game across each season for each model with the favorite and the model's probability that they won
+
+overall_win_prob <- tidy_win_prob %>% group_by(model) %>% 
+  summarize(mean=mean(won))
 
 
 
