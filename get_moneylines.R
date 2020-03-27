@@ -16,7 +16,7 @@ parse_table_row <- function(row){
     html_node("div.eventLine-book") %>% html_nodes("div.eventLine-book-value") %>% 
     html_text()
   # in MLB tutorial this chunk of the function will look a little different because of the way baseball and nba data is read in
-  tibble(dates=as.Date(dates),
+  tibble(date=as.Date(dates),
          team1=team_names[1], 
          team2=team_names[2],
          score1=as.numeric(scores[1]),
@@ -39,7 +39,7 @@ pull_moneyline_data <- function(url){
 
 classic_html_pages <- favorite_win_prob %>%
   # the moneyline information start at the 2006 season on this website so start from there
-  filter(date >= "2006-11-01") %>%
+  filter(date >= "2006-10-31") %>%
   pull(date) %>%
   unique() %>%
   str_replace_all(., "-", "") %>%
