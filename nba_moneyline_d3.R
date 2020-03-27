@@ -108,51 +108,30 @@ favorite_win_prob <- favorite_win_prob %>%
   select(season, date, team1, team2, score1, score2, fav_538_won, fav_538_prob, 
          fav_wplive_won, fav_wplive_prob, fav_wpcurrent_won, fav_wpcurrent_prob, fav_wpprev_won, fav_wpprev_prob)
 
-
-parse_table_row <- function(row){
-  dates <- row %>% html_nodes("div.status-complete") %>% html_attr("rel")
-  
-  team_names <- row %>% 
-    html_nodes("span.team-name") %>% html_text()
-  
-  scores <- row %>% 
-    html_nodes("span.current-score") %>%
-    html_text()
-  
-  moneylines <- row %>%
-    html_node("div.eventLine-book") %>% html_nodes("div.eventLine-book-value") %>% 
-    html_text()
-  # in MLB tutorial this chunk of the function will look a little different because of the way baseball and nba data is read in
-  tibble(dates=as.Date(dates),
-         team1=team_names[1], 
-         team2=team_names[2],
-         score2=as.numeric(scores[2]),
-        score1=as.numeric(scores[1]),
-        moneyline1=as.numeric(str_replace(moneylines[2], "\\+", "")),
-        moneyline2=as.numeric(str_replace(moneylines[1], "\\+", ""))
-  )
+# write function to convert moneyline odds. from: bettingexpert.com 
+get_moneyline_prob <- function(x){
+  if(x < 100) {
+    -x/(-x+100)
+  } else {
+    100 / (x+100)
+  }
 }
 
 
-pull_moneyline_data <- function(url){
-  print(url)
+## Read in csv file created from the get_moneylines.R script
+moneylines <- read_csv("data/moneylines.csv") %>% drop_na() %>% select(-X1) %>% 
+  mutate(moneyline_prob1=map_dbl(moneyline1, get_moneyline_prob)) %>% 
+  mutate(moneyline_prob2=map_dbl(moneyline2, get_moneyline_prob)) %>% 
+  mutate(fav_ml_live_won=ifelse(moneyline_prob1 > moneyline_prob2, score1 > score2, score2 > score1),
+        fav_ml_live_prob=ifelse(moneyline_prob1 > moneyline_prob2, moneyline_prob1, moneyline_prob2))
+# I noticed there are some NA values in our dataset - when looking back at those pages there are just missing rows for some reason.
+# I think this is due to the fact that NBA teams have changed - the Seattle SuperSonics no longer exist and I noticed the moneyline for their opening night game is gone.
+# after doing this we still have a dataset with moneylines and outcomes for 15179 games - very robust
+
+
+
   
-  read_html(url) %>%
-    html_nodes("div.holder-complete") %>%
-    map_dfr(., parse_table_row)
   
-}
-
-
-classic_html_pages <- favorite_win_prob %>%
-  # the moneyline information start at the 2006 season on this website so start from there
-  filter(date >= "2006-11-01") %>%
-  pull(date) %>%
-  unique() %>%
-  str_replace_all(., "-", "") %>%
-  paste0("https://classic.sportsbookreview.com/betting-odds/nba-basketball/money-line/?date=", .)
-
-
-moneylines <- read_csv("data/moneylines.csv")
-
-
+  
+  
+  
