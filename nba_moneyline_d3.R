@@ -165,12 +165,47 @@ tidy_win_prob <- favorite_win_prob %>%
 # Now we have a line for each game across each season for each model with the favorite and the model's probability that they won
 
 overall_win_prob <- tidy_win_prob %>% group_by(model) %>% 
-  summarize(mean=mean(won))
+  summarize(mean=mean(won)) %>% arrange(desc(mean))
+                                             
+
+#plot model performance over time just like from the other day 
+tidy_win_prob %>%
+  group_by(season, model) %>%
+  summarize(fraction_favorite_won = mean(won)) %>%
+  ungroup() %>%
+  ggplot(aes(x=season, y=fraction_favorite_won, group=model, color=model)) +
+  geom_hline(data=overall_win_prob, aes(yintercept=mean, group=model, color=model)) +
+  geom_line(alpha = 0.5) + 
+  theme_classic() +
+  coord_cartesian(ylim=c(0,1)) +
+  labs(x="Season", y="Fraction of games favorite won",
+       title = "Tracking model performance over time with addition of the\nprobabilities calculated from closing moneylines") +
+  scale_color_brewer(name=NULL,
+                     breaks=c("FiveThirtyEight", "money_winprob", "wpcurrent", "wplive", "wpprev"),
+                     labels=c("538", "WP Moneyline", "WP Curent", "WP Live", "WP Previous"),
+                     palette = "Dark2")
+
+#plotting observed versus expected, focusing on top 3 models
+tidy_win_prob %>% 
+  filter(model == "FiveThirtyEight" | model == "wpcurrent" | model == "money_winprob") %>% 
+  mutate(prob = round(prob, digits=2)) %>%
+  group_by(prob, model) %>%
+  summarize(games = n(),
+            wins = sum(won),
+            observed = wins / games) %>%
+  ggplot(aes(x=prob,  y=observed, group=model, color=model)) +
+  geom_abline(aes(intercept=0, slope=1), color="gray") +
+  geom_line() +
+  theme_classic() + 
+  scale_color_brewer(name=NULL,
+                     breaks=c("FiveThirtyEight", "money_winprob", "wpcurrent"),
+                     labels=c("538", "WP moneyline", "WP Curent"),
+                     palette = "Dark2") +
+  labs(x="Predicted Win Probability", y="Observed Win Probability",
+       title="The 538 and WP Current models generate more reliable win probabilities than the\nWP Live or Previous models",
+       subtitle="All data since 2007 season - When moneylines became available")
 
 
-
-  
-  
   
   
   
