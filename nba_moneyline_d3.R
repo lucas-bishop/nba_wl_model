@@ -117,14 +117,15 @@ get_moneyline_prob <- function(x){
   }
 }
 
+# Earlier version of this name conversion portion included defunct teams that I thought might work but removed them because they duplicated values
 fwp <- c("LAL", "MIA", "CLE", "GSW", "MIN", "UTA", "CHO", "DET", "MEM", 
          "BOS", "PHI", "ORL", "PHO", "LAC", "DAL", "DEN", "CHI", "TOR",
-         "ATL", "SAS", "IND", "HOU", "NYK", "POR", "MIL", "WAS", "NOK", "SAC",
+         "ATL", "SAS", "IND", "HOU", "NYK", "POR", "MIL", "WAS", "SAC",
          "NOP", "OKC", "BRK")
 ml <- c("L.A. Lakers", "Miami", "Cleveland", "Golden State", "Minnesota", "Utah", "Charlotte",
         "Detroit", "Memphis", "Boston", "Philadelphia", "Orlando", "Phoenix", "L.A. Clippers", "Dallas",
         "Denver", "Chicago", "Toronto", "Atlanta", "San Antonio", "Indiana", "Houston", "New York", 
-        "Portland", "Milwaukee", "Washington", "New Orleans", "Sacramento", "New Orleans", "Oklahoma City", "Brooklyn")
+        "Portland", "Milwaukee", "Washington", "Sacramento", "New Orleans", "Oklahoma City", "Brooklyn")
 
 
 name_convert <- tibble(fwp=fwp, ml=ml)
