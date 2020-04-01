@@ -152,8 +152,7 @@ favorite_win_prob <- read_csv("data/moneylines.csv",
   select(-team1, -team2) %>%
   rename(team1=fwp.x, team2=fwp.y) %>% 
   inner_join(favorite_win_prob, .,
-             by=c("date", "team1" = "team2", "team2"="team1",
-                  "score1"="score2", "score2"="score1")) %>% 
+             by=c("date", "team1", "team2", "score1", "score2")) %>% 
   select(-moneyline1, -moneyline2, -moneyline_prob1, -moneyline_prob2)
 
 # after doing this we have a dataset with moneylines and outcomes for 13682 games - very robust
