@@ -46,8 +46,9 @@ all_game_data <- read_csv(file="https://projects.fivethirtyeight.com/nba-model/n
 # add new columns that show the favorite and if they won based on ELO model. I will do since 1995 since I have been baskterball fan since then
 favorite_win_prob <- all_game_data %>%
   mutate(fav_538_won=ifelse(elo_prob1>elo_prob2, score1 > score2, score2 > score1),
-         fav_538_prob=ifelse(elo_prob1>elo_prob2, elo_prob1, elo_prob2)) %>%
-  select(season, date, team1, team2, score1, score2, fav_538_won, fav_538_prob)
+         fav_538_prob=ifelse(elo_prob1>elo_prob2, elo_prob1, elo_prob2),
+         fav_538_team=ifelse(elo_prob1>elo_prob2, team1, team2)) %>%
+  select(season, date, team1, team2, score1, score2, fav_538_won, fav_538_prob, fav_538_team)
 
 
 wl_live <- favorite_win_prob %>% 
@@ -88,9 +89,11 @@ favorite_win_prob <- favorite_win_prob %>%
   mutate(win_prob1=map2_dbl(win_pct.x, win_pct.y, get_wp),
          win_prob2=1-win_prob1,
          fav_wplive_won=ifelse(win_prob1 > win_prob2, score1 > score2, score2 > score1),
-         fav_wplive_prob=ifelse(win_prob1 > win_prob2, win_prob1, win_prob2)) %>%
+         fav_wplive_prob=ifelse(win_prob1 > win_prob2, win_prob1, win_prob2),
+         fav_wplive_team=ifelse(win_prob1 > win_prob2, team1, team2)) %>%
   select(season, date, team1, team2, score1, score2, 
-         fav_538_won, fav_538_prob, fav_wplive_won, fav_wplive_prob)
+         fav_538_won, fav_538_prob, fav_538_team, fav_wplive_won, fav_wplive_prob, fav_wplive_team)
+
 
 # now want to join in the wl_season df
 favorite_win_prob <- favorite_win_prob %>%
@@ -100,14 +103,16 @@ favorite_win_prob <- favorite_win_prob %>%
          win_prob2=1-win_prob1,
          fav_wpcurrent_won=ifelse(win_prob1 > win_prob2, score1 > score2, score2 > score1),
          fav_wpcurrent_prob=ifelse(win_prob1 > win_prob2, win_prob1, win_prob2),
-         
+         fav_wpcurrent_team=ifelse(win_prob1 > win_prob2, team1, team2),
          win_prob1=map2_dbl(prev_avg.x, prev_avg.y, get_wp),
          win_prob2=1-win_prob1,
          fav_wpprev_won=ifelse(win_prob1 > win_prob2, score1 > score2, score2 > score1),
-         fav_wpprev_prob=ifelse(win_prob1 > win_prob2, win_prob1, win_prob2)
-  ) %>%
-  select(season, date, team1, team2, score1, score2, fav_538_won, fav_538_prob, 
-         fav_wplive_won, fav_wplive_prob, fav_wpcurrent_won, fav_wpcurrent_prob, fav_wpprev_won, fav_wpprev_prob)
+         fav_wpprev_prob=ifelse(win_prob1 > win_prob2, win_prob1, win_prob2),
+         fav_wpprev_team=ifelse(win_prob1 > win_prob2, team1, team2)) %>%
+  select(season, date, team1, team2, score1, score2, fav_538_won, fav_538_prob, fav_538_team,
+         fav_wplive_won, fav_wplive_prob, fav_wplive_team, fav_wpcurrent_won, fav_wpcurrent_prob, fav_wpcurrent_team,
+         fav_wpprev_won, fav_wpprev_prob, fav_wpprev_team)
+
 
 # write function to convert moneyline odds. from: bettingexpert.com 
 get_moneyline_prob <- function(x){
@@ -140,7 +145,8 @@ favorite_win_prob <- read_csv("data/moneylines.csv",
   mutate(moneyline_prob1=map_dbl(moneyline1, get_moneyline_prob)) %>% 
   mutate(moneyline_prob2=map_dbl(moneyline2, get_moneyline_prob)) %>% 
   mutate(fav_ml_live_won=ifelse(moneyline_prob1 > moneyline_prob2, score1 > score2, score2 > score1),
-        fav_ml_live_prob=ifelse(moneyline_prob1 > moneyline_prob2, moneyline_prob1, moneyline_prob2)) %>% 
+        fav_ml_live_prob=ifelse(moneyline_prob1 > moneyline_prob2, moneyline_prob1, moneyline_prob2),
+        fav_ml_live_team=ifelse(moneyline_prob1 > moneyline_prob2, team1, team2)) %>% 
   inner_join(., name_convert, by=c("team1"="ml")) %>%
   inner_join(., name_convert, by=c("team2"="ml")) %>%
   select(-team1, -team2) %>%
@@ -150,20 +156,20 @@ favorite_win_prob <- read_csv("data/moneylines.csv",
                   "score1"="score2", "score2"="score1")) %>% 
   select(-moneyline1, -moneyline2, -moneyline_prob1, -moneyline_prob2)
 
-# after doing this we have a dataset with moneylines and outcomes for 13744 games - very robust
+# after doing this we have a dataset with moneylines and outcomes for 13682 games - very robust
 # this isn't all games since 2007 season because of team name changes and defunct teams having their moneylines wiped
 
 tidy_win_prob <- favorite_win_prob %>% 
   ##mutate one column for each model now that we have what we need
-  mutate(FiveThirtyEight=paste(fav_538_won, fav_538_prob, sep="_"),
-         wplive=paste(fav_wplive_won, fav_wplive_prob, sep="_"),
-         wpcurrent=paste(fav_wpcurrent_won, fav_wpcurrent_prob, sep="_"),
-         wpprev=paste(fav_wpprev_won, fav_wpprev_prob, sep="_"),
+  mutate(FiveThirtyEight=paste(fav_538_won, fav_538_prob, fav_538_team, sep="_"),
+         wplive=paste(fav_wplive_won, fav_wplive_prob, fav_wplive_team, sep="_"),
+         wpcurrent=paste(fav_wpcurrent_won, fav_wpcurrent_prob, fav_wpcurrent_team, sep="_"),
+         wpprev=paste(fav_wpprev_won, fav_wpprev_prob, fav_wpprev_team, sep="_"),
          #adding in probability model we just calc'd based on moneylines
-         money_winprob=paste(fav_ml_live_won, fav_ml_live_prob, sep="_")) %>%
+         money_winprob=paste(fav_ml_live_won, fav_ml_live_prob, fav_ml_live_team, sep="_")) %>%
   select(-starts_with("fav")) %>%
   gather(model, won_prob, FiveThirtyEight, wplive, wpcurrent, wpprev, money_winprob) %>%
-  separate(won_prob, into=c("won", "prob"), sep="_", convert=TRUE)
+  separate(won_prob, into=c("won", "prob", "team"), sep="_", convert=TRUE)
 # Now we have a line for each game across each season for each model with the favorite and the model's probability that they won
 
 #save it as a csv
