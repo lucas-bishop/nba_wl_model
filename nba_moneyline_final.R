@@ -135,7 +135,7 @@ favorite_win_prob <- favorite_win_prob %>% filter(season >= 2007)
 ## Read in csv file created from the get_moneylines.R script
 favorite_win_prob <- read_csv("data/moneylines.csv", 
          col_types = cols(score1 = col_integer(), score2 = col_integer())) %>% 
-  drop_na() %>% select(-X1) %>%
+  drop_na() %>% select(-X1) %>% 
   mutate(date = as.Date(date, "%m/%d/%Y","%Y-%m-%d")) %>% 
   mutate(moneyline_prob1=map_dbl(moneyline1, get_moneyline_prob)) %>% 
   mutate(moneyline_prob2=map_dbl(moneyline2, get_moneyline_prob)) %>% 
