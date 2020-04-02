@@ -1,4 +1,5 @@
 # need a final script to call in our analysis that will simulate our payouts/losses/etc
+# basically a script that will tell us how much we win/lose if we bet $100 on every game based on models
 
 library(tidyverse)
 library(lubridate)
@@ -10,6 +11,10 @@ get_payout <- function(moneyline, bet=100){
   ifelse(moneyline < 0, -bet * 100/moneyline, moneyline)
   
 }
+
+#test get_payout function to get understanding of how it works
+get_payout(-300)#returns 33.33 because you are betting on heavy favorite with only $100
+get_payout(200)#on flip side if u bet on heavy underdog you double your money
 
 # Load in our team names tibble that converts team names from both formats into one, excludes teams that aren't represented in both. For example Seattle != OKC in this
 fwp <- c("LAL", "MIA", "CLE", "GSW", "MIN", "UTA", "CHO", "DET", "MEM", 
@@ -47,7 +52,8 @@ payout <- read_csv("data/moneylines.csv",
   select(-moneyline_prob1, -moneyline_prob2, -fav_ml_live_won, -fav_ml_live_prob)
 
 
-
+# this will have a winnings column for each model, grouped by day
+# so by end of season each model will have a winnings # associated with it, summed by day
 daily_winnings <- read_csv("data/tidy_model_data.csv") %>%
   inner_join(., payout, by=c("date", "team1", "team2", "score1", "score2", "team")) %>%
   mutate(payout=ifelse(won, payout, -100)) %>% 
@@ -58,33 +64,33 @@ daily_winnings <- read_csv("data/tidy_model_data.csv") %>%
   mutate(cumulative_winnings = cumsum(days_winnings)) %>%
   ungroup()
 
-# annual_winnings <- daily_winnings %>%
-#   mutate(year = year(date)) %>%
-#   group_by(model, year) %>%
-#   summarize(years_winnings = sum(days_winnings)) %>%
-#   ungroup()
-# 
-# total_winnings <- annual_winnings %>%
-#   group_by(model) %>%
-#   summarize(total_winnings = sum(years_winnings)) %>%
-#   arrange(desc(total_winnings))
-# 
-# 
-# daily_winnings %>%
-#   filter(model=="fte" | model=="money" |  model=="wpcurrent") %>%
-#   ggplot(aes(x=date, y=cumulative_winnings, group=model, color=model)) +
-#   geom_hline(aes(yintercept=0)) +
-#   geom_line() +
-#   facet_grid(.~season, scales="free_x") +
-#   scale_color_manual(name=NULL,
-#                      breaks=c("fte", "money", "wpcurrent"),
-#                      labels=c("538", "Moneyline", "WP Curent"),
-#                      values=wes_palette("Darjeeling2")) +
-#   labs(x="Date", y="Winnings",
-#        title="Don't gamble based on the models' predictions!",
-#        subtitle="All data since 2009") +
-#   theme_classic()
-# 
+annual_winnings <- daily_winnings %>%
+   mutate(year = year(date)) %>%
+   group_by(model, year) %>%
+   summarize(years_winnings = sum(days_winnings)) %>%
+   ungroup()
+ 
+total_winnings <- annual_winnings %>%
+   group_by(model) %>%
+   summarize(total_winnings = sum(years_winnings)) %>%
+   arrange(desc(total_winnings))
+ 
+#plot top 3 models
+daily_winnings %>%
+   filter(model=="FiveThirtyEight" | model=="money_winprob" |  model=="wpcurrent") %>%
+   ggplot(aes(x=date, y=cumulative_winnings, group=model, color=model)) +
+   geom_hline(aes(yintercept=0)) +
+   geom_line() +
+   facet_wrap(.~season, scales="free_x") +
+   scale_color_manual(name=NULL,
+                      breaks=c("FiveThirtyEight", "money_winprob", "wpcurrent"),
+                      labels=c("538", "Moneyline", "WP Curent"),
+                      values=c("red", "green", "blue")) +
+   labs(x="Date", y="Winnings",
+        title="Gambling loses you money - regardless of model",
+        subtitle="All data since 2009") +
+   theme_classic()
+
 
 
 
