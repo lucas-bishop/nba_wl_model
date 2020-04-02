@@ -4,6 +4,7 @@
 library(tidyverse)
 library(lubridate)
 library(broom)
+library(ggthemes)
 
 #create function we will call when adding the payout columns to our df
 get_payout <- function(moneyline, bet=100){
@@ -81,16 +82,17 @@ daily_winnings %>%
    ggplot(aes(x=date, y=cumulative_winnings, group=model, color=model)) +
    geom_hline(aes(yintercept=0)) +
    geom_line() +
-   facet_wrap(.~season, scales="free_x") +
+   facet_wrap(.~season, scales = "free_x", ncol = 7) +
    scale_color_manual(name=NULL,
                       breaks=c("FiveThirtyEight", "money_winprob", "wpcurrent"),
                       labels=c("538", "Moneyline", "WP Curent"),
                       values=c("red", "green", "blue")) +
    labs(x="Date", y="Winnings",
-        title="Gambling loses you money - regardless of model",
-        subtitle="All data since 2009") +
-   theme_classic()
-
-
-
-
+        title="Gambling loses money - regardless of model",
+        subtitle="All data since 2007 season when moneyline data became available") +
+   theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 5), 
+         axis.text.y = element_text(size = 5)) + 
+   ggsave(filename = "annual_winnings.png", width = 15, height = 15, units = 'cm')
+       
+       
+       
